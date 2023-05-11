@@ -65,6 +65,10 @@ export class Term extends Node {
   toCNF () {
     return new Term(this.term)
   }
+
+  toString () {
+    return this.term
+  }
 }
 
 export class OpNode extends Node {
@@ -112,6 +116,10 @@ export class OpNode extends Node {
     }
 
     return new OpNode(simple.type, cnfChildren)
+  }
+
+  toString () {
+    return '(' + this.children.map((c) => c.toString()).join(this.type === OP_UNION ? ' ∪ ' : ' ∩ ') + ')'
   }
 }
 
