@@ -1,5 +1,5 @@
 import test from 'tape'
-import { Node, Term, OpNode, distribute } from '../index.js'
+import { Node, Term, OpNode, distribute, Universal, Null } from '../index.js'
 import { OP_UNION, OP_INTERSECT, TERM } from '../node-types.js'
 
 test('distribute', (t) => {
@@ -222,6 +222,88 @@ test('OpNode', (t) => {
         new Term('b'),
         new Term('c')
       ]), 'AND flattens')
+
+      t.end()
+    })
+
+    t.test('removes Universal for INTERSECT', (t) => {
+      const node = new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new Universal()
+      ])
+
+      t.deepEquals(node.simplify(), new Term('A'), 'Reduces A ∩ 𝕌 to A')
+
+      const naryNode = new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new Universal(),
+        new Term('B')
+      ])
+
+      t.deepEquals(naryNode.simplify(), new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new Term('B')
+      ]), 'Reduces A ∩ 𝕌 ∩ B to A ∩ B')
+
+      t.end()
+    })
+
+    t.test('removes Null for UNION', (t) => {
+      const node = new OpNode(OP_UNION, [
+        new Term('A'),
+        new Null()
+      ])
+
+      t.deepEquals(node.simplify(), new Term('A'), 'Reduces A ∪ ∅ to A')
+
+      const naryNode = new OpNode(OP_UNION, [
+        new Term('A'),
+        new Null(),
+        new Term('B')
+      ])
+
+      t.deepEquals(naryNode.simplify(), new OpNode(OP_UNION, [
+        new Term('A'),
+        new Term('B')
+      ]), 'Reduces A ∪ ∅ ∪ B to A ∪ B')
+
+      t.end()
+    })
+
+    t.test('union w/ Universal', (t) => {
+      const node = new OpNode(OP_UNION, [
+        new Term('A'),
+        new Universal()
+      ])
+
+      t.deepEquals(node.simplify(), new Universal(), 'Reduces A ∪ 𝕌 to 𝕌')
+
+      const naryNode = new OpNode(OP_UNION, [
+        new Term('A'),
+        new Universal(),
+        new Term('B')
+      ])
+
+      t.deepEquals(naryNode.simplify(), new Universal(), 'Reduces A ∪ 𝕌 ∪ B to 𝕌')
+
+      t.end()
+    })
+
+    t.test('intersect w/ Null', (t) => {
+      const node = new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new Null()
+      ])
+
+      t.deepEquals(node.simplify(), new Null(), 'Reduces A ∪ ∅ to ∅')
+
+      const naryNode = new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new Null(),
+        new Term('B')
+      ])
+
+      t.deepEquals(naryNode.simplify(), new Null(), 'Reduces A ∪ ∅ ∪ B to ∅')
 
       t.end()
     })

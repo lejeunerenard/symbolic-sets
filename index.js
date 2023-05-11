@@ -1,4 +1,4 @@
-import { OP_UNION, OP_INTERSECT, TERM } from './node-types.js'
+import { OP_UNION, OP_INTERSECT, UNIVERSAL, NULL, TERM } from './node-types.js'
 
 export function distribute (node) {
   if (node.type !== OP_UNION && node.type !== OP_INTERSECT) {
@@ -51,6 +51,34 @@ export class Node {
   }
 }
 
+export class Universal extends Node {
+  constructor () {
+    super(UNIVERSAL)
+  }
+
+  simplify () {
+    return new Universal()
+  }
+
+  toString () {
+    return '𝕌'
+  }
+}
+
+export class Null extends Node {
+  constructor () {
+    super(NULL)
+  }
+
+  simplify () {
+    return new Null()
+  }
+
+  toString () {
+    return '∅'
+  }
+}
+
 export class Term extends Node {
   constructor (term) {
     super(TERM)
@@ -92,15 +120,44 @@ export class OpNode extends Node {
     const flattenedChildren = simpleChildren.flatMap((child) =>
       child.type === this.type ? child.children : child)
 
+    // Identity laws : Filter absolute set types
+    const filteredChildren = flattenedChildren.filter((x) => {
+      switch (this.type) {
+        case OP_UNION:
+          return x.type !== NULL
+        case OP_INTERSECT:
+          return x.type !== UNIVERSAL
+        default:
+          return true
+      }
+    })
+
+    // Null Laws : Account for Greedy absolute sets
+    const foundGreedy = filteredChildren.find((x) => {
+      switch (this.type) {
+        case OP_UNION:
+          return x.type === UNIVERSAL
+        case OP_INTERSECT:
+          return x.type === NULL
+        default:
+          return false
+      }
+    })
+    const childrenAccountForGreedy = foundGreedy
+      ? [foundGreedy]
+      : filteredChildren
+
     // Idempotent Laws via uniqueness
     const uniq = {}
-    const uniqChildren = flattenedChildren.flatMap((node) => {
+    const uniqChildren = childrenAccountForGreedy.flatMap((node) => {
       if (node.type === TERM) {
         if (node.term in uniq) return []
         uniq[node.term] = true
       }
       return node
     })
+
+    // Return child if only child. AKA you cant have a UNION nor INTERSECT of just one set
     if (uniqChildren.length === 1) return uniqChildren[0]
 
     return new OpNode(this.type, uniqChildren)
