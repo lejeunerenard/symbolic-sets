@@ -1,7 +1,7 @@
 {
-  "name": "symbolic-sets",
+  "name": "@lejeunerenard/symbolic-sets",
   "version": "1.0.0",
-  "description": "",
+  "description": "A library for symbolic manipulation of sets and their operators as a tree.",
   "main": "index.js",
   "type": "module",
   "scripts": {
