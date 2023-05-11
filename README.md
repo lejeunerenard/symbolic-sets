@@ -54,7 +54,11 @@ Returns a new `Term` copy as a term is already simplified.
 ### `new OpNode(type, children)`
 
 A node that represents a operator node of type `type` operating on `children`
-nodes. Current supported operator types are `OP_UNION` & `OP_INTERSECT`.
+nodes. Current supported operator types are `OP_UNION`, `OP_INTERSECT` &
+`OP_COMPLEMENT`.
+
+Note that `OP_UNION` & `OP_INTERSECT` types require 2 or more `children`.
+`OP_COMPLEMENT` requires exactly 1 `children`.
 
 #### `.simplify()`
 
@@ -74,3 +78,7 @@ A shortcut for `new OpNode(OP_UNION, children)`.
 ### `new IntersectNode(children)`
 
 A shortcut for `new OpNode(OP_INTERSECT, children)`.
+
+### `new ComplementNode(child)`
+
+A shortcut for `new OpNode(OP_COMPLEMENT, [child])`.
