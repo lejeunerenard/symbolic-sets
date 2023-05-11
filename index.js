@@ -190,15 +190,41 @@ export class OpNode extends Node {
     })
     if (foundComplementPair) return this.type === OP_UNION ? new Universal() : new Null()
 
-    // Return child if only child. AKA you cant have a UNION nor INTERSECT of just one set
-    if (uniqChildren.length === 1) return uniqChildren[0]
+    // Absorption Law
+    // Get "single" terms & composite terms
+    const [singleTerms, compositeTerms] = uniqChildren.reduce((accum, child) => {
+      if (child.type === TERM || child.type === OP_COMPLEMENT) {
+        accum[0].push(child)
+      } else {
+        accum[1].push(child)
+      }
 
-    return new OpNode(this.type, uniqChildren)
+      return accum
+    }, [[], []])
+    // Check all composite terms to filter out any that contain the same child term as a single term
+    const nonAbsorbedCompositeTerms = compositeTerms.filter((compositeTerm) =>
+      !compositeTerm.children.some((grandChild) => {
+        return singleTerms.some((term) => {
+          return term.type === grandChild.type &&
+            (
+              (term.type === TERM && term.term === grandChild.term) ||
+              (term.type === OP_COMPLEMENT && term.children[0].term === grandChild.children[0].term)
+            )
+        })
+      }))
+    const absorbedChildren = singleTerms.concat(nonAbsorbedCompositeTerms)
+
+    // Return child if only child. AKA you cant have a UNION nor INTERSECT of just one set
+    if (absorbedChildren.length === 1) return absorbedChildren[0]
+
+    return new OpNode(this.type, absorbedChildren)
   }
 
   toCNF () {
     const simple = this.simplify()
     const cnfChildren = simple.children.map((node) => node.toCNF())
+
+    if (simple.type === TERM) return simple
 
     // Distributive Law
     if (simple.type === OP_UNION && cnfChildren.some((node) => node.type === OP_INTERSECT)) {

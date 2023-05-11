@@ -425,5 +425,19 @@ test('OpNode', (t) => {
 
       t.end()
     })
+
+    t.test('absorption law', (t) => {
+      const node = new OpNode(OP_UNION, [
+        new Term('A'),
+        new OpNode(OP_INTERSECT, [
+          new Term('A'),
+          new Term('B')
+        ])
+      ])
+
+      t.deepEquals(node.simplify(), new Term('A'), 'Reduces A ∪ (A ∩ B) to A')
+
+      t.end()
+    })
   })
 })
