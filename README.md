@@ -34,6 +34,15 @@ npm install lejeunerenard/symbolic-sets
 
 ## API
 
+### `new Universal()`
+
+A node that represents the "Universal" set, eg the set that contains all
+elements.
+
+### `new Null()`
+
+A node that represents the "Null" set, eg the set that contains nothing.
+
 ### `new Term(string)`
 
 A node that represents a simple set denoted by the `string`.
