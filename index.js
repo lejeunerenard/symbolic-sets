@@ -4,6 +4,7 @@ export function distribute (node) {
   if (node.type !== OP_UNION && node.type !== OP_INTERSECT) {
     return node
   }
+  const factory = node.nodeFactory
 
   const originalType = node.type
   const newOp = originalType === OP_UNION ? OP_INTERSECT : OP_UNION
@@ -26,17 +27,17 @@ export function distribute (node) {
   } else if (accumulatorChildren.length === 1) {
     left = accumulatorChildren[0]
   } else {
-    left = new OpNode(originalType, accumulatorChildren)
+    left = new factory.OP(originalType, accumulatorChildren)
   }
 
   // different
   return differentTypeChildren.reduce((accum, right) => {
     const distributedChildren = right.children.map((node) => {
-      const result = new OpNode(originalType, [accum, node])
+      const result = new factory.OP(originalType, [accum, node])
       return accum.type === newOp ? distribute(result) : result
     })
 
-    return new OpNode(newOp, distributedChildren)
+    return new factory.OP(newOp, distributedChildren)
   }, left)
 }
 
@@ -44,6 +45,13 @@ export class Node {
   constructor (type, children = []) {
     this.type = type
     this.children = children
+
+    this.nodeFactory = {
+      OP: OpNode,
+      UNIVERSAL: Universal,
+      NULL: Null,
+      TERM: Term
+    }
   }
 
   simplify () {
@@ -57,7 +65,7 @@ export class Universal extends Node {
   }
 
   simplify () {
-    return new Universal()
+    return new this.constructor()
   }
 
   toString () {
@@ -71,7 +79,7 @@ export class Null extends Node {
   }
 
   simplify () {
-    return new Null()
+    return new this.constructor()
   }
 
   toString () {
@@ -86,12 +94,12 @@ export class Term extends Node {
   }
 
   simplify () {
-    return new Term(this.term)
+    return new this.constructor(this.term)
   }
 
   // CNF is Conjunctive Normalized Form
   toCNF () {
-    return new Term(this.term)
+    return new this.constructor(this.term)
   }
 
   toString () {
@@ -121,15 +129,15 @@ export class OpNode extends Node {
       // DeMorgan's Law
       if (child.type === OP_UNION || child.type === OP_INTERSECT) {
         const grandChildren = child.children.map((child) =>
-          new OpNode(OP_COMPLEMENT, [child]).simplify())
+          new this.nodeFactory.OP(OP_COMPLEMENT, [child]).simplify())
         const oppositeOp = child.type === OP_UNION ? OP_INTERSECT : OP_UNION
-        return new OpNode(oppositeOp, grandChildren)
+        return new this.nodeFactory.OP(oppositeOp, grandChildren)
       }
 
       // Involution Law
       if (child.type === OP_COMPLEMENT) return child.children[0]
 
-      return new OpNode(this.type, simpleChildren)
+      return new this.nodeFactory.OP(this.type, simpleChildren)
     }
 
     // Flatten
@@ -188,7 +196,7 @@ export class OpNode extends Node {
 
       return false
     })
-    if (foundComplementPair) return this.type === OP_UNION ? new Universal() : new Null()
+    if (foundComplementPair) return this.type === OP_UNION ? new this.nodeFactory.UNIVERSAL() : new this.nodeFactory.NULL()
 
     // Absorption Law
     // Get "single" terms & composite terms
@@ -217,7 +225,7 @@ export class OpNode extends Node {
     // Return child if only child. AKA you cant have a UNION nor INTERSECT of just one set
     if (absorbedChildren.length === 1) return absorbedChildren[0]
 
-    return new OpNode(this.type, absorbedChildren)
+    return new this.nodeFactory.OP(this.type, absorbedChildren)
   }
 
   toCNF () {
@@ -228,10 +236,10 @@ export class OpNode extends Node {
 
     // Distributive Law
     if (simple.type === OP_UNION && cnfChildren.some((node) => node.type === OP_INTERSECT)) {
-      return distribute(new OpNode(simple.type, cnfChildren)).simplify()
+      return distribute(new this.nodeFactory.OP(simple.type, cnfChildren)).simplify()
     }
 
-    return new OpNode(simple.type, cnfChildren)
+    return new this.nodeFactory.OP(simple.type, cnfChildren)
   }
 
   toString () {
