@@ -30,15 +30,15 @@ export function distribute (node) {
     left = new factory.OP(originalType, accumulatorChildren)
   }
 
-  // different
+  // Fold all children w/ different op type into the accumulator
   return differentTypeChildren.reduce((accum, right) => {
     const distributedChildren = right.children.map((node) => {
       const result = new factory.OP(originalType, [accum, node])
       return accum.type === newOp ? distribute(result) : result
     })
 
-    return new factory.OP(newOp, distributedChildren)
-  }, left)
+    return new factory.OP(newOp, distributedChildren).simplify()
+  }, left).simplify()
 }
 
 export class Node {
@@ -229,17 +229,15 @@ export class OpNode extends Node {
   }
 
   toCNF () {
-    const simple = this.simplify()
-    const cnfChildren = simple.children.map((node) => node.toCNF())
-
-    if (simple.type === TERM) return simple
+    const cnfChildren = this.children.map((node) => node.toCNF())
 
     // Distributive Law
-    if (simple.type === OP_UNION && cnfChildren.some((node) => node.type === OP_INTERSECT)) {
-      return distribute(new this.nodeFactory.OP(simple.type, cnfChildren)).simplify()
+    if (this.type === OP_UNION && cnfChildren.some((node) => node.type === OP_INTERSECT)) {
+      const distributed = distribute(new this.nodeFactory.OP(this.type, cnfChildren))
+      return distributed.simplify()
     }
 
-    return new this.nodeFactory.OP(simple.type, cnfChildren)
+    return new this.nodeFactory.OP(this.type, cnfChildren).simplify()
   }
 
   toString () {

@@ -22,6 +22,102 @@ test('distribute', (t) => {
         new Term('c')
       ])
     ]))
+
+    const unionInters = new OpNode(OP_UNION, [
+      new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new Term('B')
+      ]),
+      new OpNode(OP_INTERSECT, [
+        new Term('C'),
+        new Term('D')
+      ])
+    ])
+
+    const unionIntersDistributed = distribute(unionInters)
+
+    const unionIntersExpected = new OpNode(OP_INTERSECT, [
+      new OpNode(OP_UNION, [
+        new Term('C'),
+        new Term('A')
+      ]),
+      new OpNode(OP_UNION, [
+        new Term('C'),
+        new Term('B')
+      ]),
+      new OpNode(OP_UNION, [
+        new Term('D'),
+        new Term('A')
+      ]),
+      new OpNode(OP_UNION, [
+        new Term('D'),
+        new Term('B')
+      ])
+    ])
+
+    t.deepEquals(unionIntersDistributed, unionIntersExpected, 'union of 3 intersects')
+
+    const unionTripleIntersect = new OpNode(OP_UNION, [
+      new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new Term('B')
+      ]),
+      new OpNode(OP_INTERSECT, [
+        new Term('C'),
+        new Term('D')
+      ]),
+      new OpNode(OP_INTERSECT, [
+        new Term('E'),
+        new Term('F')
+      ])
+    ])
+
+    const unionTripleIntersectDistributed = (distribute(unionTripleIntersect))
+
+    const unionTripleIntersectExpected = new OpNode(OP_INTERSECT, [
+      new OpNode(OP_UNION, [
+        new Term('E'),
+        new Term('C'),
+        new Term('A')
+      ]),
+      new OpNode(OP_UNION, [
+        new Term('E'),
+        new Term('C'),
+        new Term('B')
+      ]),
+      new OpNode(OP_UNION, [
+        new Term('E'),
+        new Term('D'),
+        new Term('A')
+      ]),
+      new OpNode(OP_UNION, [
+        new Term('E'),
+        new Term('D'),
+        new Term('B')
+      ]),
+      new OpNode(OP_UNION, [
+        new Term('F'),
+        new Term('C'),
+        new Term('A')
+      ]),
+      new OpNode(OP_UNION, [
+        new Term('F'),
+        new Term('C'),
+        new Term('B')
+      ]),
+      new OpNode(OP_UNION, [
+        new Term('F'),
+        new Term('D'),
+        new Term('A')
+      ]),
+      new OpNode(OP_UNION, [
+        new Term('F'),
+        new Term('D'),
+        new Term('B')
+      ])
+    ])
+
+    t.deepEquals(unionTripleIntersectDistributed, unionTripleIntersectExpected, 'union of 3 intersects')
     t.end()
   })
 })
@@ -436,6 +532,352 @@ test('OpNode', (t) => {
       ])
 
       t.deepEquals(node.simplify(), new Term('A'), 'Reduces A ∪ (A ∩ B) to A')
+
+      t.end()
+    })
+  })
+
+  t.test('toCNF', (t) => {
+    t.test('collapse intersect nodes', (t) => {
+      const node = new OpNode(OP_INTERSECT, [
+        new OpNode(OP_INTERSECT, [
+          new Term('A'),
+          new Term('B')
+        ]),
+        new OpNode(OP_INTERSECT, [
+          new Term('C'),
+          new OpNode(OP_INTERSECT, [
+            new Term('D'),
+            new Term('E')
+          ])
+        ])
+      ])
+
+      const cnfNode = node.toCNF()
+
+      t.is(cnfNode.type, OP_INTERSECT, 'new node is INTERSECT')
+      t.deepEquals(cnfNode, new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new Term('B'),
+        new Term('C'),
+        new Term('D'),
+        new Term('E')
+      ]), 'new node is the same')
+      t.end()
+    })
+
+    t.test('collapse intersect through distribution', (t) => {
+      const node = new OpNode(OP_INTERSECT, [
+        new OpNode(OP_INTERSECT, [
+          new Term('A'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('C'),
+          new OpNode(OP_INTERSECT, [
+            new Term('D'),
+            new Term('E')
+          ])
+        ])
+      ])
+
+      const cnfNode = node.toCNF()
+      const expected = new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new Term('B'),
+        new OpNode(OP_UNION, [
+          new Term('C'),
+          new Term('D')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('C'),
+          new Term('E')
+        ])
+      ])
+
+      t.is(cnfNode.type, OP_INTERSECT, 'new node is INTERSECT')
+      t.deepEquals(cnfNode, expected, 'new node is the same')
+
+      const deeperNode = new OpNode(OP_INTERSECT, [
+        new OpNode(OP_INTERSECT, [
+          new Term('A'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('C'),
+          new OpNode(OP_INTERSECT, [
+            new Term('D'),
+            new Term('E')
+          ]),
+          new OpNode(OP_INTERSECT, [
+            new Term('F'),
+            new Term('G')
+          ])
+        ])
+      ])
+
+      const deepCnfNode = deeperNode.toCNF()
+      const deepExpected = new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new Term('B'),
+        new OpNode(OP_UNION, [
+          new Term('F'),
+          new Term('C'),
+          new Term('D')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('F'),
+          new Term('C'),
+          new Term('E')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('G'),
+          new Term('C'),
+          new Term('D')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('G'),
+          new Term('C'),
+          new Term('E')
+        ])
+      ])
+
+      t.is(deepCnfNode.type, OP_INTERSECT, 'new node is INTERSECT')
+      t.deepEquals(deepCnfNode, deepExpected, 'new node is the same')
+
+      t.end()
+    })
+
+    t.test('pokemon go situation', (t) => {
+      const node = new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new OpNode(OP_UNION, [
+          new OpNode(OP_INTERSECT, [
+            new Term('B'),
+            new Term('C')
+          ]),
+          new OpNode(OP_INTERSECT, [
+            new Term('D'),
+            new Term('E')
+          ]),
+          new OpNode(OP_INTERSECT, [
+            new Term('F'),
+            new Term('G')
+          ])
+        ])
+      ])
+
+      const cnfNode = node.toCNF()
+      const expected = new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new OpNode(OP_UNION, [
+          new Term('F'),
+          new Term('D'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('F'),
+          new Term('D'),
+          new Term('C')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('F'),
+          new Term('E'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('F'),
+          new Term('E'),
+          new Term('C')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('G'),
+          new Term('D'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('G'),
+          new Term('D'),
+          new Term('C')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('G'),
+          new Term('E'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('G'),
+          new Term('E'),
+          new Term('C')
+        ])
+      ])
+
+      t.is(cnfNode.type, OP_INTERSECT, 'new node is INTERSECT')
+      t.deepEquals(cnfNode, expected, 'new node is the same')
+
+      const tripleLeafNodes = new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new OpNode(OP_UNION, [
+          new OpNode(OP_INTERSECT, [
+            new Term('B'),
+            new Term('C'),
+            new Term('D')
+          ]),
+          new OpNode(OP_INTERSECT, [
+            new Term('E'),
+            new Term('F'),
+            new Term('G')
+          ]),
+          new OpNode(OP_INTERSECT, [
+            new Term('H'),
+            new Term('I'),
+            new Term('J')
+          ])
+        ])
+      ])
+
+      const tripleCNF = tripleLeafNodes.toCNF()
+      const tripleExpected = new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new OpNode(OP_UNION, [
+          new Term('H'),
+          new Term('E'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('H'),
+          new Term('E'),
+          new Term('C')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('H'),
+          new Term('E'),
+          new Term('D')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('H'),
+          new Term('F'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('H'),
+          new Term('F'),
+          new Term('C')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('H'),
+          new Term('F'),
+          new Term('D')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('H'),
+          new Term('G'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('H'),
+          new Term('G'),
+          new Term('C')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('H'),
+          new Term('G'),
+          new Term('D')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('I'),
+          new Term('E'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('I'),
+          new Term('E'),
+          new Term('C')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('I'),
+          new Term('E'),
+          new Term('D')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('I'),
+          new Term('F'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('I'),
+          new Term('F'),
+          new Term('C')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('I'),
+          new Term('F'),
+          new Term('D')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('I'),
+          new Term('G'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('I'),
+          new Term('G'),
+          new Term('C')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('I'),
+          new Term('G'),
+          new Term('D')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('J'),
+          new Term('E'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('J'),
+          new Term('E'),
+          new Term('C')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('J'),
+          new Term('E'),
+          new Term('D')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('J'),
+          new Term('F'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('J'),
+          new Term('F'),
+          new Term('C')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('J'),
+          new Term('F'),
+          new Term('D')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('J'),
+          new Term('G'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('J'),
+          new Term('G'),
+          new Term('C')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('J'),
+          new Term('G'),
+          new Term('D')
+        ])
+      ])
+
+      t.is(tripleCNF.type, OP_INTERSECT, 'new node is INTERSECT')
+      t.deepEquals(tripleCNF, tripleExpected, 'new node is the same')
 
       t.end()
     })
