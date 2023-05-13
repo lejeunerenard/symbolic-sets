@@ -224,6 +224,9 @@ export class OpNode extends Node {
     // Return child if only child. AKA you cant have a UNION nor INTERSECT of just one set
     if (absorbedChildren.length === 1) return absorbedChildren[0]
 
+    // If completely cleared return universal
+    if (absorbedChildren.length === 0) return new this.nodeFactory.UNIVERSAL()
+
     return new this.nodeFactory.OP(this.type, absorbedChildren)
   }
 
