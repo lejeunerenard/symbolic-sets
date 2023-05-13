@@ -68,6 +68,10 @@ export class Universal extends Node {
     return new this.constructor()
   }
 
+  isSimple () {
+    return true
+  }
+
   toString () {
     return '𝕌'
   }
@@ -80,6 +84,10 @@ export class Null extends Node {
 
   simplify () {
     return new this.constructor()
+  }
+
+  isSimple () {
+    return true
   }
 
   toString () {
@@ -95,6 +103,10 @@ export class Term extends Node {
 
   simplify () {
     return new this.constructor(this.term)
+  }
+
+  isSimple () {
+    return true
   }
 
   // CNF is Conjunctive Normalized Form
@@ -119,6 +131,10 @@ export class OpNode extends Node {
       console.error('type', type, 'children', children)
       throw Error(`Operator must have ${type === OP_COMPLEMENT ? 'one child' : 'at least two children'}`)
     }
+  }
+
+  isSimple () {
+    return this.type === OP_COMPLEMENT
   }
 
   simplify () {
@@ -200,7 +216,7 @@ export class OpNode extends Node {
     // Absorption Law
     // Get "single" terms & composite terms
     const [singleTerms, compositeTerms] = uniqChildren.reduce((accum, child) => {
-      if (child.type === TERM || child.type === OP_COMPLEMENT) {
+      if (child.isSimple()) {
         accum[0].push(child)
       } else {
         accum[1].push(child)
@@ -213,10 +229,7 @@ export class OpNode extends Node {
       !compositeTerm.children.some((grandChild) => {
         return singleTerms.some((term) => {
           return term.type === grandChild.type &&
-            (
-              (term.type === TERM && term.term === grandChild.term) ||
-              (term.type === OP_COMPLEMENT && term.children[0].term === grandChild.children[0].term)
-            )
+            term.toString({ sort: true }) === grandChild.toString({ sort: true })
         })
       }))
     const absorbedChildren = singleTerms.concat(nonAbsorbedCompositeTerms)
