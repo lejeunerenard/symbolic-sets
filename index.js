@@ -103,7 +103,7 @@ export class Term extends Node {
   }
 
   toString () {
-    return this.term
+    return this.term + ''
   }
 }
 
