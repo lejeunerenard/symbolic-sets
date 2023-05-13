@@ -535,6 +535,52 @@ test('OpNode', (t) => {
 
       t.end()
     })
+
+    t.test('idempotent law', (t) => {
+      const node = new OpNode(OP_UNION, [
+        new Term('A'),
+        new Term('A')
+      ])
+
+      t.deepEquals(node.simplify(), new Term('A'), 'Reduces A ∪ A to A')
+
+      const simpleIntersect = new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new Term('A')
+      ])
+
+      t.deepEquals(simpleIntersect.simplify(), new Term('A'), 'Reduces A ∩ A to A')
+
+      const simpleDistribution = new OpNode(OP_INTERSECT, [
+        new Term('A'),
+        new OpNode(OP_UNION, [
+          new Term('A'),
+          new Term('A')
+        ])
+      ])
+
+      t.deepEquals(simpleDistribution.simplify(), new Term('A'), 'Reduces A ∩ (A ∪ A) to A')
+
+      const simpleComposite = new OpNode(OP_INTERSECT, [
+        new OpNode(OP_UNION, [
+          new Term('A'),
+          new Term('B')
+        ]),
+        new OpNode(OP_UNION, [
+          new Term('B'),
+          new Term('A')
+        ])
+      ])
+
+      console.log('simpleComposite.simplify().toString()', simpleComposite.simplify().toString())
+
+      t.deepEquals(simpleComposite.simplify(), new OpNode(OP_UNION, [
+        new Term('A'),
+        new Term('B')
+      ]), 'Reduces (A ∪ B) ∩ (A ∪ B) to A ∪ B')
+
+      t.end()
+    })
   })
 
   t.test('toCNF', (t) => {

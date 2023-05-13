@@ -174,10 +174,9 @@ export class OpNode extends Node {
     // Idempotent Laws via uniqueness
     const uniq = {}
     const uniqChildren = childrenAccountForGreedy.flatMap((node) => {
-      if (node.type === TERM) {
-        if (node.term in uniq) return []
-        uniq[node.term] = true
-      }
+      const stringRepresentation = node.toString({ sort: true })
+      if (stringRepresentation in uniq) return []
+      uniq[stringRepresentation] = true
       return node
     })
 
@@ -240,9 +239,14 @@ export class OpNode extends Node {
     return new this.nodeFactory.OP(this.type, cnfChildren).simplify()
   }
 
-  toString () {
+  toString ({ sort = false } = {}) {
     if (this.type === OP_COMPLEMENT) return this.children[0].toString() + '\''
-    return '(' + this.children.map((c) => c.toString()).join(this.type === OP_UNION ? ' ∪ ' : ' ∩ ') + ')'
+
+    const sortedChildren = sort
+      ? [...this.children].sort((a, b) => a.toString().localeCompare(b.toString()))
+      : this.children
+
+    return '(' + sortedChildren.map((c) => c.toString()).join(this.type === OP_UNION ? ' ∪ ' : ' ∩ ') + ')'
   }
 }
 
